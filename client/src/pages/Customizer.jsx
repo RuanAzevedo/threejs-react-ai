@@ -1,23 +1,23 @@
+import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useSnapshot } from 'valtio'
 
 import state from '../store'
-import { download } from '../assets'
-import { downloadCanvasToImage, reader } from '../config/helpers'
+import { reader } from '../config/helpers'
 import { EditorTabs, FilterTabs, DecalTypes } from '../config/constants'
 import { fadeAnimation, slideAnimation } from '../config/motion'
-import {
-  ColorPicker,
-  AIPicker,
-  CustomButton,
-  FilePicker,
-  Tab,
-} from '../components'
-import { useState } from 'react'
+import { ColorPicker, CustomButton, FilePicker, Tab } from '../components'
 
 const Customizer = () => {
   const snap = useSnapshot(state)
+
+  const [file, setFile] = useState('')
+
   const [activeEditorTab, setActiveEditorTab] = useState('')
+  const [activeFilterTab, setActiveFilterTab] = useState({
+    logoShirt: true,
+    stylishShirt: false,
+  })
 
   // show tab content depending on the activeTab
   const generateTabContent = () => {
@@ -25,12 +25,52 @@ const Customizer = () => {
       case 'colorpicker':
         return <ColorPicker />
       case 'filepicker':
-        return null
+        return <FilePicker file={file} setFile={setFile} readFile={readFile} />
       case 'aipicker':
         return null
       default:
         return null
     }
+  }
+
+  const handleDecals = (type, result) => {
+    const decalType = DecalTypes[type]
+
+    state[decalType.stateProperty] = result
+
+    if (!activeFilterTab[decalType.filterTab]) {
+      handleActiveFilterTab(decalType.filterTab)
+    }
+  }
+
+  const handleActiveFilterTab = (tabName) => {
+    switch (tabName) {
+      case 'logoShirt':
+        state.isLogoTexture = !activeFilterTab[tabName]
+        break
+      case 'stylishShirt':
+        state.isFullTexture = !activeFilterTab[tabName]
+        break
+      default:
+        state.isLogoTexture = true
+        state.isFullTexture = false
+        break
+    }
+
+    // after setting the state, activeFilterTab is updated
+    setActiveFilterTab((prevState) => {
+      return {
+        ...prevState,
+        [tabName]: !prevState[tabName],
+      }
+    })
+  }
+
+  const readFile = async (type) => {
+    const result = await reader(file)
+
+    handleDecals(type, result)
+    setActiveEditorTab('')
   }
 
   return (
@@ -66,7 +106,7 @@ const Customizer = () => {
               title="Go Back"
               handleClick={() => (state.intro = true)}
               customStyles="w-fit px-4 py-2.5 font-bold text-sm"
-            ></CustomButton>
+            />
           </motion.div>
 
           <motion.div
@@ -78,9 +118,9 @@ const Customizer = () => {
                 key={tab.name}
                 tab={tab}
                 isFilterTab
-                isActiveTab=""
-                handleClick={() => {}}
-              ></Tab>
+                isActiveTab={activeFilterTab[tab.name]}
+                handleClick={() => handleActiveFilterTab(tab.name)}
+              />
             ))}
           </motion.div>
         </>
