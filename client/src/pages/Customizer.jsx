@@ -6,7 +6,13 @@ import state from '../store'
 import { reader } from '../config/helpers'
 import { EditorTabs, FilterTabs, DecalTypes } from '../config/constants'
 import { fadeAnimation, slideAnimation } from '../config/motion'
-import { ColorPicker, CustomButton, FilePicker, Tab } from '../components'
+import {
+  AIPicker,
+  ColorPicker,
+  CustomButton,
+  FilePicker,
+  Tab,
+} from '../components'
 
 const Customizer = () => {
   const snap = useSnapshot(state)
@@ -19,6 +25,9 @@ const Customizer = () => {
     stylishShirt: false,
   })
 
+  const [prompt, setPrompt] = useState('')
+  const [generatingImg, setGeneratingImg] = useState(false)
+
   // show tab content depending on the activeTab
   const generateTabContent = () => {
     switch (activeEditorTab) {
@@ -27,9 +36,44 @@ const Customizer = () => {
       case 'filepicker':
         return <FilePicker file={file} setFile={setFile} readFile={readFile} />
       case 'aipicker':
-        return null
+        return (
+          <AIPicker
+            prompt={prompt}
+            setPrompt={setPrompt}
+            generatingImg={generatingImg}
+            handleSubmit={handleSubmit}
+          />
+        )
       default:
         return null
+    }
+  }
+
+  const handleSubmit = async (type) => {
+    if (!prompt) return alert('Please enter a prompt')
+
+    try {
+      setGeneratingImg(true)
+
+      const response = await fetch('http://localhost:8080/api/v1/dalle', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt,
+        }),
+      })
+
+      const data = await response.json()
+
+      handleDecals(type, `data:image/png;base64,${data.photo}`)
+    } catch (error) {
+      console.error(error)
+      // alert(error)
+    } finally {
+      setGeneratingImg(false)
+      setActiveEditorTab('')
     }
   }
 
